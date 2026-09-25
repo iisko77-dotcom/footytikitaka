@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Liga Footy Tic-Tac-Toe</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap');
+
+    :root {
+      --laliga-navy: #0a0f1d;
+      --laliga-card: #151c2e;
+      --laliga-red: #ff004b;
+      --laliga-gold: #f59e0b;
+      --laliga-cyan: #06b6d4;
+      --laliga-border: #263350;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--laliga-navy);
+      color: #f8fafc;
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(255, 0, 75, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 40%);
+    }
+
+    .laliga-gradient-text {
+      background: linear-gradient(135deg, #ffffff 30%, #ff004b 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .glow-red {
+      box-shadow: 0 0 20px rgba(255, 0, 75, 0.35);
+    }
+
+    .glow-cyan {
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.35);
+    }
+
+    /* Grid layout */
+    .game-grid {
+      display: grid;
+      grid-template-columns: 85px repeat(3, minmax(0, 1fr));
+      grid-template-rows: 85px repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    @media (max-width: 640px) {
+      .game-grid {
+        grid-template-columns: 65px repeat(3, minmax(0, 1fr));
+        grid-template-rows: 65px repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+    }
+
+    .grid-cell {
+      aspect-ratio: 1 / 1;
+      background-color: var(--laliga-card);
+      border: 1px solid var(--laliga-border);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .cell-interactive:hover {
+      border-color: var(--laliga-red);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(255, 0, 75, 0.25);
+    }
+
+    /* Custom scrollbar for player list */
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: #0f172a;
+      border-radius: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb:hover {
+      background: var(--laliga-red);
+    }
+
+    @keyframes pulseModal {
+      0% { transform: scale(0.95); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .animate-modal {
+      animation: pulseModal 0.2s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="flex flex-col justify-between items-center p-3 md:p-6 min-h-screen">
+
+  <header class="w-full max-w-2xl text-center mb-4">
+    <div class="inline-flex items-center gap-2 bg-red-950/60 border border-red-500/30 px-3 py-1 rounded-full text-xs font-semibold text-red-400 mb-2 uppercase tracking-widest">
+      <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+      La Liga Footy Grid Edition
+    </div>
+    <h1 class="text-3xl md:text-5xl font-black uppercase tracking-tight laliga-gradient-text mb-2">
+      Tic-Tac-Toe
+    </h1>
+    
+    <!-- Clear Rule Summary Badge -->
+    <div class="bg-[#151c2e]/90 border border-slate-700/60 rounded-xl p-3 text-xs md:text-sm text-slate-300 max-w-xl mx-auto shadow-lg backdrop-blur-sm">
+      <p class="flex items-center justify-center gap-1.5 font-medium text-amber-400 mb-1">
+        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2a1 1 0 002 0V7zm-1 8a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>
+        <span>Eligibility Rule (2010 – Present)</span>
+      </p>
+      <p class="text-slate-400">
+        Players qualify if they played for the club at <strong class="text-slate-200">any time</strong> between <span class="text-slate-200 font-semibold">2010 and 2026</span> (they do not need to be playing there currently).
+      </p>
+    </div>
+  </header>
+
+  <main class="w-full max-w-2xl flex flex-col items-center">
+    
+    <!-- Turn Indicator -->
+    <div class="w-full flex items-center justify-between bg-[#151c2e] border border-slate-800 rounded-2xl p-3 mb-5 shadow-xl">
+      <div id="playerX-box" class="flex items-center gap-2.5 px-4 py-2 rounded-xl transition-all duration-300 bg-red-950/40 border border-red-500/40 glow-red">
+        <span class="w-8 h-8 rounded-lg bg-red-600 text-white font-extrabold flex items-center justify-center text-lg">X</span>
+        <div class="text-left">
+          <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Player 1</div>
+          <div class="text-sm font-bold text-white leading-none">Player X</div>
+        </div>
+      </div>
+
+      <div id="status-message" class="text-center font-bold text-slate-300 text-sm md:text-base px-2">
+        <span class="text-red-500 font-extrabold">X</span>'s Turn
+      </div>
+
+      <div id="playerO-box" class="flex items-center gap-2.5 px-4 py-2 rounded-xl transition-all duration-300 opacity-50 border border-transparent">
+        <div class="text-right">
+          <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Player 2</div>
+          <div class="text-sm font-bold text-white leading-none">Player O</div>
+        </div>
+        <span class="w-8 h-8 rounded-lg bg-cyan-600 text-white font-extrabold flex items-center justify-center text-lg">O</span>
+      </div>
+    </div>
+
+    <!-- Tic-Tac-Toe Grid -->
+    <div class="w-full bg-[#111827] border border-slate-800 p-3 rounded-2xl shadow-2xl">
+      <div class="game-grid" id="grid">
+        <!-- Top Left Corner -->
+        <div class="flex items-center justify-center bg-[#0a0f1d] rounded-xl border border-slate-800">
+          <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+
+        <!-- Col Headers -->
+        <div class="grid-cell rounded-xl flex flex-col items-center justify-center p-2 text-center bg-[#182238] border-slate-700/50" id="col-0"></div>
+        <div class="grid-cell rounded-xl flex flex-col items-center justify-center p-2 text-center bg-[#182238] border-slate-700/50" id="col-1"></div>
+        <div class="grid-cell rounded-xl flex flex-col items-center justify-center p-2 text-center bg-[#182238] border-slate-700/50" id="col-2"></div>
+
+        <!-- Row 0 -->
+        <div class="grid-cell rounded-xl flex flex-col items-center justify-center p-2 text-center bg-[#182238] border-slate-700/50" id="row-0"></div>
+        <button class="grid-cell cell-interactive rounded-xl flex flex-col items-center justify-center relative cursor-pointer group" data-row="0" data-col="0"></button>
+        <button class="grid-cell cell-interactive rounded-xl flex flex-col items-center justify-center relative cursor-pointer group" data-row="0" data-col="1"></button>
+        <button class="grid-cell cell-interactive rounded-xl flex flex-col items-center justify-center relative cursor-pointer group" data-row="0" data-col="2"></button>
+
+        <!-- Row 1 -->
+        <div class="grid-cell rounded-xl flex flex-col items-center justify-center p-2 text-center bg-[#182238] border-slate-700/50" id="row-1"></div>
+        <button class="grid-cell cell-interactive rounded-xl flex flex-col items-center justify-center relative cursor-pointer group" data-row="1" data-col="0"></button>
+        <button class="grid-cell cell-interactive rounded-xl flex flex-col items-center justify-center relative cursor-pointer group" data-row="1" data-col="1"></button>
+        <button class="grid-cell cell-interactive rounded-xl flex flex-col items-center justify-center relative cursor-pointer group" data-row="1" data-col="2"></button>
+
+        <!-- Row 2 -->
+        <div class="grid-cell rounded-xl flex flex-col items-center justify-center p-2 text-center bg-[#182238] border-slate-700/50" id="row-2"></div>
+        <button class="grid-cell cell-interactive rounded-xl flex flex-col items-center justify-center relative cursor-pointer group" data-row="2" data-col="0"></button>
+        <button class="grid-cell cell-interactive rounded-xl flex flex-col items-center justify-center relative cursor-pointer group" data-row="2" data-col="1"></button>
+        <button class="grid-cell cell-interactive rounded-xl flex flex-col items-center justify-center relative cursor-pointer group" data-row="2" data-col="2"></button>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="mt-6 flex items-center justify-center gap-4">
+      <button onclick="initGame()" class="px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold rounded-xl shadow-lg hover:shadow-red-600/30 transition-all flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        New Board
+      </button>
+    </div>
+  </main>
+
+  <!-- Search Modal -->
+  <div id="modal-overlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-[#151c2e] border border-slate-700 rounded-2xl w-full max-w-lg p-5 shadow-2xl animate-modal relative">
+      
+      <div class="flex items-center justify-between mb-3 pb-3 border-b border-slate-800">
+        <div>
+          <span class="text-[10px] font-extrabold uppercase tracking-widest text-red-400">Match Requirements</span>
+          <h3 id="modal-title" class="text-base md:text-lg font-bold text-white">Select Player</h3>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Search Input -->
+      <div class="relative mb-4">
+        <svg class="w-5 h-5 absolute left-3 top-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input type="text" id="search-input" oninput="filterPlayers()" placeholder="Search player (e.g. Messi, Modric, Bellingham)..." class="w-full bg-[#0a0f1d] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500 transition-colors">
+      </div>
+
+      <!-- Player List -->
+      <div id="player-list" class="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scroll"></div>
+    </div>
+  </div>
+
+  <!-- Notification Banner Modal for Error / Success Feedback -->
+  <div id="alert-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-[#151c2e] border border-red-500/50 rounded-2xl w-full max-w-md p-6 text-center shadow-2xl animate-modal">
+      <div id="alert-icon" class="w-16 h-16 rounded-full bg-red-950/80 border border-red-500/40 text-red-500 flex items-center justify-center mx-auto mb-4 text-3xl">
+        ✕
+      </div>
+      <h3 id="alert-title" class="text-xl font-black text-white mb-2">Incorrect Match!</h3>
+      <p id="alert-body" class="text-sm text-slate-300 mb-6 leading-relaxed"></p>
+      <button onclick="closeAlert()" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-colors">
+        Continue Game
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Extensive Football Database (Focusing on 2010-2026 Era La Liga & European Legends)
+    const PLAYERS = [
+      // Barcelona Legends & Modern Stars
+      { name: "Lionel Messi", clubs: ["Barcelona", "PSG", "Inter Miami"], country: "Argentina", pos: "FWD" },
+      { name: "Andrés Iniesta", clubs: ["Barcelona", "Vissel Kobe"], country: "Spain", pos: "MID" },
+      { name: "Xavi Hernández", clubs: ["Barcelona", "Al Sadd"], country: "Spain", pos: "MID" },
+      { name: "Neymar Jr", clubs: ["Barcelona", "PSG", "Santos", "Al Hilal"], country: "Brazil", pos: "FWD" },
+      { name: "Luis Suárez", clubs: ["Barcelona", "Atlético Madrid", "Liverpool", "Inter Miami"], country: "Uruguay", pos: "FWD" },
+      { name: "Gerard Piqué", clubs: ["Barcelona", "Man United"], country: "Spain", pos: "DEF" },
+      { name: "Sergio Busquets", clubs: ["Barcelona", "Inter Miami"], country: "Spain", pos: "MID" },
+      { name: "Dani Alves", clubs: ["Barcelona", "Sevilla", "Juventus", "PSG"], country: "Brazil", pos: "DEF" },
+      { name: "Jordi Alba", clubs: ["Barcelona", "Valencia", "Inter Miami"], country: "Spain", pos: "DEF" },
+      { name: "Javier Mascherano", clubs: ["Barcelona", "Liverpool"], country: "Argentina", pos: "DEF" },
+      { name: "Marc-André ter Stegen", clubs: ["Barcelona", "Borussia M'gladbach"], country: "Germany", pos: "GK" },
+      { name: "Pedri", clubs: ["Barcelona", "Las Palmas"], country: "Spain", pos: "MID" },
+      { name: "Gavi", clubs: ["Barcelona"], country: "Spain", pos: "MID" },
+      { name: "Lamine Yamal", clubs: ["Barcelona"], country: "Spain", pos: "FWD" },
+      { name: "Robert Lewandowski", clubs: ["Barcelona", "Bayern Munich", "Dortmund"], country: "Poland", pos: "FWD" },
+      { name: "Frenkie de Jong", clubs: ["Barcelona", "Ajax"], country: "Netherlands", pos: "MID" },
+      { name: "Raphinha", clubs: ["Barcelona", "Leeds", "Rennes"], country: "Brazil", pos: "FWD" },
+      { name: "Ronald Araújo", clubs: ["Barcelona"], country: "Uruguay", pos: "DEF" },
+
+      // Real Madrid Legends & Modern Stars
+      { name: "Cristiano Ronaldo", clubs: ["Real Madrid", "Man United", "Juventus", "Al Nassr"], country: "Portugal", pos: "FWD" },
+      { name: "Luka Modrić", clubs: ["Real Madrid", "Tottenham"], country: "Croatia", pos: "MID" },
+      { name: "Karim Benzema", clubs: ["Real Madrid", "Lyon", "Al Ittihad"], country: "France", pos: "FWD" },
+      { name: "Sergio Ramos", clubs: ["Real Madrid", "PSG", "Sevilla"], country: "Spain", pos: "DEF" },
+      { name: "Toni Kroos", clubs: ["Real Madrid", "Bayern Munich"], country: "Germany", pos: "MID" },
+      { name: "Gareth Bale", clubs: ["Real Madrid", "Tottenham", "LAFC"], country: "Wales", pos: "FWD" },
+      { name: "Marcelo", clubs: ["Real Madrid", "Fluminense"], country: "Brazil", pos: "DEF" },
+      { name: "Iker Casillas", clubs: ["Real Madrid", "Porto"], country: "Spain", pos: "GK" },
+      { name: "Keylor Navas", clubs: ["Real Madrid", "PSG", "Levante"], country: "Costa Rica", pos: "GK" },
+      { name: "Thibaut Courtois", clubs: ["Real Madrid", "Chelsea", "Atlético Madrid"], country: "Belgium", pos: "GK" },
+      { name: "Jude Bellingham", clubs: ["Real Madrid", "Dortmund", "Birmingham"], country: "England", pos: "MID" },
+      { name: "Vinícius Júnior", clubs: ["Real Madrid", "Flamengo"], country: "Brazil", pos: "FWD" },
+      { name: "Kylian Mbappé", clubs: ["Real Madrid", "PSG", "Monaco"], country: "France", pos: "FWD" },
+      { name: "Rodrygo", clubs: ["Real Madrid", "Santos"], country: "Brazil", pos: "FWD" },
+      { name: "Federico Valverde", clubs: ["Real Madrid", "Deportivo"], country: "Uruguay", pos: "MID" },
+      { name: "Dani Carvajal", clubs: ["Real Madrid", "Bayer Leverkusen"], country: "Spain", pos: "DEF" },
+      { name: "Casemiro", clubs: ["Real Madrid", "Man United", "Porto"], country: "Brazil", pos: "MID" },
+      { name: "Ángel Di María", clubs: ["Real Madrid", "PSG", "Juventus", "Man United", "Benfica"], country: "Argentina", pos: "FWD" },
+      { name: "Mesut Özil", clubs: ["Real Madrid", "Arsenal", "Werder Bremen"], country: "Germany", pos: "MID" },
+      { name: "Xabi Alonso", clubs: ["Real Madrid", "Bayern Munich", "Liverpool"], country: "Spain", pos: "MID" },
+      { name: "Sami Khedira", clubs: ["Real Madrid", "Juventus", "Stuttgart"], country: "Germany", pos: "MID" },
+      { name: "Raphaël Varane", clubs: ["Real Madrid", "Man United", "Lens"], country: "France", pos: "DEF" },
+
+      // Atlético Madrid Legends & Modern Stars
+      { name: "Antoine Griezmann", clubs: ["Atlético Madrid", "Barcelona", "Real Sociedad"], country: "France", pos: "FWD" },
+      { name: "Radamel Falcao", clubs: ["Atlético Madrid", "Monaco", "Rayo Vallecano", "Chelsea", "Man United"], country: "Colombia", pos: "FWD" },
+      { name: "Diego Godín", clubs: ["Atlético Madrid", "Villarreal", "Inter Milan"], country: "Uruguay", pos: "DEF" },
+      { name: "Jan Oblak", clubs: ["Atlético Madrid", "Benfica"], country: "Slovenia", pos: "GK" },
+      { name: "Koke", clubs: ["Atlético Madrid"], country: "Spain", pos: "MID" },
+      { name: "Marcos Llorente", clubs: ["Atlético Madrid", "Real Madrid"], country: "Spain", pos: "MID" },
+      { name: "João Félix", clubs: ["Atlético Madrid", "Barcelona", "Chelsea", "Benfica"], country: "Portugal", pos: "FWD" },
+      { name: "Diego Costa", clubs: ["Atlético Madrid", "Chelsea", "Rayo Vallecano"], country: "Spain", pos: "FWD" },
+      { name: "Arda Turan", clubs: ["Atlético Madrid", "Barcelona", "Galatasaray"], country: "Turkey", pos: "MID" },
+      { name: "Rodrigo De Paul", clubs: ["Atlético Madrid", "Udinese", "Valencia"], country: "Argentina", pos: "MID" },
+
+      // Other Iconic La Liga Stars (Sevilla, Valencia, Athletic, Villarreal, Real Sociedad, Betis)
+      { name: "David Villa", clubs: ["Valencia", "Barcelona", "Atlético Madrid", "NYCFC"], country: "Spain", pos: "FWD" },
+      { name: "Jesús Navas", clubs: ["Sevilla", "Man City"], country: "Spain", pos: "DEF" },
+      { name: "Ivan Rakitić", clubs: ["Sevilla", "Barcelona", "Schalke 04"], country: "Croatia", pos: "MID" },
+      { name: "David Silva", clubs: ["Valencia", "Real Sociedad", "Man City"], country: "Spain", pos: "MID" },
+      { name: "Iker Muniain", clubs: ["Athletic Club"], country: "Spain", pos: "MID" },
+      { name: "Inaki Williams", clubs: ["Athletic Club"], country: "Ghana", pos: "FWD" },
+      { name: "Nico Williams", clubs: ["Athletic Club"], country: "Spain", pos: "FWD" },
+      { name: "Gerard Moreno", clubs: ["Villarreal", "Espanyol"], country: "Spain", pos: "FWD" },
+      { name: "Dani Parejo", clubs: ["Valencia", "Villarreal", "Getafe"], country: "Spain", pos: "MID" },
+      { name: "Isco", clubs: ["Real Betis", "Real Madrid", "Sevilla", "Málaga"], country: "Spain", pos: "MID" },
+      { name: "Nabil Fekir", clubs: ["Real Betis", "Lyon"], country: "France", pos: "MID" },
+      { name: "Mikel Oyarzabal", clubs: ["Real Sociedad"], country: "Spain", pos: "FWD" },
+      { name: "Martin Ødegaard", clubs: ["Real Sociedad", "Real Madrid", "Arsenal"], country: "Norway", pos: "MID" },
+
+      // Global Superstars & International Icons (2010 - 2026)
+      { name: "Erling Haaland", clubs: ["Man City", "Dortmund", "Salzburg"], country: "Norway", pos: "FWD" },
+      { name: "Kevin De Bruyne", clubs: ["Man City", "Wolfsburg", "Chelsea"], country: "Belgium", pos: "MID" },
+      { name: "Mohamed Salah", clubs: ["Liverpool", "Roma", "Chelsea"], country: "Egypt", pos: "FWD" },
+      { name: "Harry Kane", clubs: ["Bayern Munich", "Tottenham"], country: "England", pos: "FWD" },
+      { name: "Virgil van Dijk", clubs: ["Liverpool", "Southampton", "Celtic"], country: "Netherlands", pos: "DEF" },
+      { name: "Manuel Neuer", clubs: ["Bayern Munich", "Schalke 04"], country: "Germany", pos: "GK" },
+      { name: "N'Golo Kanté", clubs: ["Chelsea", "Leicester", "Al Ittihad"], country: "France", pos: "MID" },
+      { name: "Rodri", clubs: ["Man City", "Atlético Madrid", "Villarreal"], country: "Spain", pos: "MID" },
+      { name: "Alexis Sánchez", clubs: ["Barcelona", "Arsenal", "Inter Milan", "Man United"], country: "Chile", pos: "FWD" },
+      { name: "Cesc Fàbregas", clubs: ["Barcelona", "Arsenal", "Chelsea", "Monaco"], country: "Spain", pos: "MID" }
+    ];
+
+    const CRITERIA_POOL = [
+      // La Liga Teams
+      { type: 'club', value: 'Real Madrid', label: 'Real Madrid', icon: '👑' },
+      { type: 'club', value: 'Barcelona', label: 'FC Barcelona', icon: '🔵🔴' },
+      { type: 'club', value: 'Atlético Madrid', label: 'Atlético Madrid', icon: '🔴⚪' },
+      { type: 'club', value: 'Sevilla', label: 'Sevilla FC', icon: '⚪🔴' },
+      { type: 'club', value: 'Valencia', label: 'Valencia CF', icon: '🦇' },
+      { type: 'club', value: 'Athletic Club', label: 'Athletic Club', icon: '🦁' },
+      { type: 'club', value: 'Villarreal', label: 'Villarreal CF', icon: '💛' },
+      { type: 'club', value: 'Real Sociedad', label: 'Real Sociedad', icon: '⚪🔵' },
+      { type: 'club', value: 'Real Betis', label: 'Real Betis', icon: '💚⚪' },
+      
+      // Top European Powerhouses
+      { type: 'club', value: 'PSG', label: 'PSG', icon: '🇫🇷' },
+      { type: 'club', value: 'Man City', label: 'Man City', icon: '🩵' },
+      { type: 'club', value: 'Bayern Munich', label: 'Bayern Munich', icon: '🔴' },
+      { type: 'club', value: 'Chelsea', label: 'Chelsea FC', icon: '🔵' },
+      { type: 'club', value: 'Man United', label: 'Man United', icon: '😈' },
+      { type: 'club', value: 'Liverpool', label: 'Liverpool', icon: '🔴' },
+
+      // Countries
+      { type: 'country', value: 'Spain', label: 'Spain', icon: '🇪🇸' },
+      { type: 'country', value: 'Argentina', label: 'Argentina', icon: '🇦🇷' },
+      { type: 'country', value: 'France', label: 'France', icon: '🇫🇷' },
+      { type: 'country', value: 'Brazil', label: 'Brazil', icon: '🇧🇷' },
+      { type: 'country', value: 'Germany', label: 'Germany', icon: '🇩🇪' },
+      { type: 'country', value: 'Portugal', label: 'Portugal', icon: '🇵🇹' },
+      { type: 'country', value: 'England', label: 'England', icon: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+      { type: 'country', value: 'Uruguay', label: 'Uruguay', icon: '🇺🇾' },
+      { type: 'country', value: 'Netherlands', label: 'Netherlands', icon: '🇳🇱' },
+
+      // Positions
+      { type: 'pos', value: 'FWD', label: 'Forward', icon: '⚽' },
+      { type: 'pos', value: 'MID', label: 'Midfielder', icon: '🎯' },
+      { type: 'pos', value: 'DEF', label: 'Defender', icon: '🛡️' },
+      { type: 'pos', value: 'GK', label: 'Goalkeeper', icon: '🧤' }
+    ];
+
+    let gameState = {
+      board: Array(3).fill(null).map(() => Array(3).fill(null)),
+      currentPlayer: 'X',
+      activeCell: null,
+      rowCriteria: [],
+      colCriteria: [],
+      isGameOver: false
+    };
+
+    function initGame() {
+      // Pick random unique row/col criteria
+      let shuffled = [...CRITERIA_POOL].sort(() => 0.5 - Math.random());
+      
+      let cols = shuffled.slice(0, 3);
+      let rows = shuffled.slice(3, 6);
+
+      gameState = {
+        board: Array(3).fill(null).map(() => Array(3).fill(null)),
+        currentPlayer: 'X',
+        activeCell: null,
+        rowCriteria: rows,
+        colCriteria: cols,
+        isGameOver: false
+      };
+
+      // Render Headers
+      cols.forEach((crit, i) => {
+        document.getElementById(`col-${i}`).innerHTML = `
+          <span class="text-base md:text-xl mb-1">${crit.icon}</span>
+          <span class="text-[11px] md:text-xs font-black text-slate-200 leading-tight uppercase tracking-wider">${crit.label}</span>
+        `;
+      });
+
+      rows.forEach((crit, i) => {
+        document.getElementById(`row-${i}`).innerHTML = `
+          <span class="text-base md:text-xl mb-1">${crit.icon}</span>
+          <span class="text-[11px] md:text-xs font-black text-slate-200 leading-tight uppercase tracking-wider">${crit.label}</span>
+        `;
+      });
+
+      // Clear cell graphics
+      document.querySelectorAll('.cell-interactive').forEach(cell => {
+        cell.className = 'grid-cell cell-interactive rounded-xl flex flex-col items-center justify-center relative cursor-pointer group p-1';
+        cell.innerHTML = `
+          <div class="w-2 h-2 rounded-full bg-slate-700/50 group-hover:bg-red-500 transition-colors"></div>
+        `;
+      });
+
+      updateTurnUI();
+    }
+
+    function updateTurnUI() {
+      const statusMessage = document.getElementById('status-message');
+      const boxX = document.getElementById('playerX-box');
+      const boxO = document.getElementById('playerO-box');
+
+      if (gameState.isGameOver) return;
+
+      if (gameState.currentPlayer === 'X') {
+        statusMessage.innerHTML = `<span class="text-red-500 font-extrabold">X</span>'s Turn`;
+        boxX.className = "flex items-center gap-2.5 px-4 py-2 rounded-xl transition-all duration-300 bg-red-950/40 border border-red-500/40 glow-red";
+        boxO.className = "flex items-center gap-2.5 px-4 py-2 rounded-xl transition-all duration-300 opacity-40 border border-transparent";
+      } else {
+        statusMessage.innerHTML = `<span class="text-cyan-400 font-extrabold">O</span>'s Turn`;
+        boxO.className = "flex items-center gap-2.5 px-4 py-2 rounded-xl transition-all duration-300 bg-cyan-950/40 border border-cyan-500/40 glow-cyan";
+        boxX.className = "flex items-center gap-2.5 px-4 py-2 rounded-xl transition-all duration-300 opacity-40 border border-transparent";
+      }
+    }
+
+    function handleCellClick(r, c) {
+      if (gameState.isGameOver || gameState.board[r][c] !== null) return;
+
+      gameState.activeCell = { row: r, col: c };
+      const rowCrit = gameState.rowCriteria[r].label;
+      const colCrit = gameState.colCriteria[c].label;
+
+      document.getElementById('modal-title').innerText = `${rowCrit} + ${colCrit}`;
+      document.getElementById('search-input').value = '';
+      
+      filterPlayers();
+      openModal();
+    }
+
+    function openModal() {
+      document.getElementById('modal-overlay').classList.remove('hidden');
+      document.getElementById('search-input').focus();
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.add('hidden');
+    }
+
+    function showAlert(title, text) {
+      document.getElementById('alert-title').innerText = title;
+      document.getElementById('alert-body').innerText = text;
+      document.getElementById('alert-modal').classList.remove('hidden');
+    }
+
+    function closeAlert() {
+      document.getElementById('alert-modal').classList.add('hidden');
+    }
+
+    function filterPlayers() {
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const listEl = document.getElementById('player-list');
+      listEl.innerHTML = '';
+
+      const matches = PLAYERS.filter(p => p.name.toLowerCase().includes(query));
+
+      if (matches.length === 0) {
+        listEl.innerHTML = `
+          <div class="text-center py-6 text-slate-500 text-xs">
+            No player found in database matching "${query}"
+          </div>
+        `;
+        return;
+      }
+
+      matches.forEach(player => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between p-3 bg-[#0a0f1d] hover:bg-slate-800/80 border border-slate-800 hover:border-red-500/50 rounded-xl cursor-pointer transition-all group';
+        item.innerHTML = `
+          <div>
+            <div class="font-bold text-slate-100 group-hover:text-red-400 transition-colors text-sm">${player.name}</div>
+            <div class="text-[11px] text-slate-400 font-medium">${player.country} • ${player.pos}</div>
+          </div>
+          <div class="text-[10px] text-slate-500 bg-slate-900 border border-slate-800 px-2 py-1 rounded-md max-w-[140px] truncate">
+            ${player.clubs.join(', ')}
+          </div>
+        `;
+        item.onclick = () => selectPlayer(player);
+        listEl.appendChild(item);
+      });
+    }
+
+    function meetsCriterion(player, crit) {
+      if (crit.type === 'club') return player.clubs.includes(crit.value);
+      if (crit.type === 'country') return player.country === crit.value;
+      if (crit.type === 'pos') return player.pos === crit.value;
+      return false;
+    }
+
+    function selectPlayer(player) {
+      closeModal();
+
+      const { row, col } = gameState.activeCell;
+      const rowCrit = gameState.rowCriteria[row];
+      const colCrit = gameState.colCriteria[col];
+
+      const matchesRow = meetsCriterion(player, rowCrit);
+      const matchesCol = meetsCriterion(player, colCrit);
+
+      if (matchesRow && matchesCol) {
+        // Valid Move
+        gameState.board[row][col] = gameState.currentPlayer;
+
+        const cellEl = document.querySelector(`.cell-interactive[data-row="${row}"][data-col="${col}"]`);
+        cellEl.onclick = null;
+        cellEl.classList.remove('cell-interactive');
+        
+        const isX = gameState.currentPlayer === 'X';
+        const colorClass = isX ? 'bg-red-950/80 border-red-500/80 text-red-400' : 'bg-cyan-950/80 border-cyan-500/80 text-cyan-400';
+        const badgeColor = isX ? 'bg-red-600 text-white' : 'bg-cyan-600 text-white';
+
+        cellEl.className = `grid-cell rounded-xl flex flex-col items-center justify-center relative p-1 text-center border ${colorClass}`;
+        cellEl.innerHTML = `
+          <span class="absolute top-1 right-1.5 w-4 h-4 rounded text-[10px] font-black flex items-center justify-center ${badgeColor}">
+            ${gameState.currentPlayer}
+          </span>
+          <span class="text-xs md:text-sm font-black text-slate-100 leading-tight mt-1 line-clamp-2 px-1">${player.name}</span>
+          <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">${player.country}</span>
+        `;
+
+        if (checkWin(gameState.currentPlayer)) {
+          const winner = gameState.currentPlayer;
+          document.getElementById('status-message').innerHTML = `🎉 <span class="${winner === 'X' ? 'text-red-500' : 'text-cyan-400'} font-extrabold">PLAYER ${winner} WINS!</span> 🎉`;
+          gameState.isGameOver = true;
+          return;
+        }
+
+        if (checkDraw()) {
+          document.getElementById('status-message').innerHTML = `<span class="text-amber-400 font-extrabold">GAME DRAW!</span>`;
+          gameState.isGameOver = true;
+          return;
+        }
+
+        // Next Turn
+        gameState.currentPlayer = gameState.currentPlayer === 'X' ? 'O' : 'X';
+        updateTurnUI();
+
+      } else {
+        // Build clear feedback explanation
+        let failedReason = [];
+        if (!matchesRow) failedReason.push(`did not play for/represent "${rowCrit.label}"`);
+        if (!matchesCol) failedReason.push(`did not play for/represent "${colCrit.label}"`);
+
+        showAlert(
+          "Invalid Selection!",
+          `❌ ${player.name} ${failedReason.join(' and ')} during the 2010–2026 era. Turn passed to Player ${gameState.currentPlayer === 'X' ? 'O' : 'X'}!`
+        );
+
+        // Turn switches on wrong answer
+        gameState.currentPlayer = gameState.currentPlayer === 'X' ? 'O' : 'X';
+        updateTurnUI();
+      }
+    }
+
+    function checkWin(p) {
+      const b = gameState.board;
+      for (let i = 0; i < 3; i++) {
+        if (b[i][0] === p && b[i][1] === p && b[i][2] === p) return true;
+        if (b[0][i] === p && b[1][i] === p && b[2][i] === p) return true;
+      }
+      if (b[0][0] === p && b[1][1] === p && b[2][2] === p) return true;
+      if (b[0][2] === p && b[1][1] === p && b[2][0] === p) return true;
+      return false;
+    }
+
+    function checkDraw() {
+      return gameState.board.every(row => row.every(cell => cell !== null));
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.cell-interactive').forEach(cell => {
+        cell.addEventListener('click', () => {
+          const r = parseInt(cell.getAttribute('data-row'));
+          const c = parseInt(cell.getAttribute('data-col'));
+          handleCellClick(r, c);
+        });
+      });
+
+      initGame();
+    });
+  </script>
+</body>
+</html>
