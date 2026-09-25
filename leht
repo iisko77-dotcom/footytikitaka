@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>La Liga Footy Tic-Tac-Toe</title>
+  <title>La Liga FootyGrid — Tic-Tac-Toe</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap');
@@ -94,6 +94,10 @@
     .animate-modal {
       animation: pulseModal 0.2s ease-out forwards;
     }
+    .success-card { animation: successReveal 0.35s cubic-bezier(.2,.8,.2,1) forwards; }
+    @keyframes successReveal { 0% { transform: scale(.88) translateY(12px); opacity: 0; } 100% { transform: scale(1) translateY(0); opacity: 1; } }
+    .cell-player-image { width: 58px; height: 58px; object-fit: cover; border-radius: 12px; border: 1px solid rgba(255,255,255,.15); margin-bottom: 4px; }
+
   </style>
 </head>
 <body class="flex flex-col justify-between items-center p-3 md:p-6 min-h-screen">
@@ -114,7 +118,7 @@
         <span>Eligibility Rule (2010 – Present)</span>
       </p>
       <p class="text-slate-400">
-        Players qualify if they played for the club at <strong class="text-slate-200">any time</strong> between <span class="text-slate-200 font-semibold">2010 and 2026</span> (they do not need to be playing there currently).
+        Players qualify if their recorded club history includes the club at some point in the <strong class="text-slate-200">2010–2026 era</strong>. The database contains 237 players and checks every generated square before showing the board.
       </p>
     </div>
   </header>
@@ -177,6 +181,8 @@
       </div>
     </div>
 
+    <div id="board-info" class="mt-3 text-[11px] text-slate-500 text-center">237-player database • every board is validated before play</div>
+
     <!-- Controls -->
     <div class="mt-6 flex items-center justify-center gap-4">
       <button onclick="initGame()" class="px-6 py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold rounded-xl shadow-lg hover:shadow-red-600/30 transition-all flex items-center gap-2">
@@ -211,6 +217,25 @@
     </div>
   </div>
 
+  <!-- Correct-answer reveal modal -->
+  <div id="success-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-[60] flex items-center justify-center p-4 hidden">
+    <div class="success-card bg-[#151c2e] border border-emerald-400/50 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
+      <div class="absolute inset-0 pointer-events-none bg-gradient-to-br from-emerald-500/10 via-transparent to-cyan-500/10"></div>
+      <div class="relative">
+        <div id="success-image-wrap" class="w-full h-64 bg-[#0a0f1d] overflow-hidden flex items-center justify-center">
+          <img id="success-image" src="" alt="" class="w-full h-full object-cover hidden">
+          <div id="success-fallback" class="text-7xl">⚽</div>
+        </div>
+        <div class="p-6 text-center">
+          <div class="text-emerald-400 text-xs font-black uppercase tracking-[0.25em] mb-2">✓ Correct Answer</div>
+          <h3 id="success-title" class="text-3xl font-black text-white mb-1"></h3>
+          <p id="success-details" class="text-sm text-slate-400 mb-5"></p>
+          <button onclick="closeSuccess()" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-black rounded-xl transition-all shadow-lg">Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Notification Banner Modal for Error / Success Feedback -->
   <div id="alert-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-[#151c2e] border border-red-500/50 rounded-2xl w-full max-w-md p-6 text-center shadow-2xl animate-modal">
@@ -228,88 +253,243 @@
   <script>
     // Extensive Football Database (Focusing on 2010-2026 Era La Liga & European Legends)
     const PLAYERS = [
-      // Barcelona Legends & Modern Stars
-      { name: "Lionel Messi", clubs: ["Barcelona", "PSG", "Inter Miami"], country: "Argentina", pos: "FWD" },
+      { name: "Lionel Messi", clubs: ["Barcelona", "Inter Miami", "PSG"], country: "Argentina", pos: "FWD" },
       { name: "Andrés Iniesta", clubs: ["Barcelona", "Vissel Kobe"], country: "Spain", pos: "MID" },
-      { name: "Xavi Hernández", clubs: ["Barcelona", "Al Sadd"], country: "Spain", pos: "MID" },
-      { name: "Neymar Jr", clubs: ["Barcelona", "PSG", "Santos", "Al Hilal"], country: "Brazil", pos: "FWD" },
-      { name: "Luis Suárez", clubs: ["Barcelona", "Atlético Madrid", "Liverpool", "Inter Miami"], country: "Uruguay", pos: "FWD" },
+      { name: "Xavi Hernández", clubs: ["Al Sadd", "Barcelona"], country: "Spain", pos: "MID" },
+      { name: "Neymar Jr", clubs: ["Al Hilal", "Barcelona", "PSG", "Santos"], country: "Brazil", pos: "FWD" },
+      { name: "Luis Suárez", clubs: ["Atlético Madrid", "Barcelona", "Inter Miami", "Liverpool"], country: "Uruguay", pos: "FWD" },
       { name: "Gerard Piqué", clubs: ["Barcelona", "Man United"], country: "Spain", pos: "DEF" },
       { name: "Sergio Busquets", clubs: ["Barcelona", "Inter Miami"], country: "Spain", pos: "MID" },
-      { name: "Dani Alves", clubs: ["Barcelona", "Sevilla", "Juventus", "PSG"], country: "Brazil", pos: "DEF" },
-      { name: "Jordi Alba", clubs: ["Barcelona", "Valencia", "Inter Miami"], country: "Spain", pos: "DEF" },
+      { name: "Dani Alves", clubs: ["Barcelona", "Juventus", "PSG", "Sevilla"], country: "Brazil", pos: "DEF" },
+      { name: "Jordi Alba", clubs: ["Barcelona", "Inter Miami", "Valencia"], country: "Spain", pos: "DEF" },
       { name: "Javier Mascherano", clubs: ["Barcelona", "Liverpool"], country: "Argentina", pos: "DEF" },
       { name: "Marc-André ter Stegen", clubs: ["Barcelona", "Borussia M'gladbach"], country: "Germany", pos: "GK" },
-      { name: "Pedri", clubs: ["Barcelona", "Las Palmas"], country: "Spain", pos: "MID" },
+      { name: "Pedri", clubs: ["Barcelona"], country: "Spain", pos: "MID" },
       { name: "Gavi", clubs: ["Barcelona"], country: "Spain", pos: "MID" },
-      { name: "Lamine Yamal", clubs: ["Barcelona"], country: "Spain", pos: "FWD" },
+      { name: "Lamine Yamal", clubs: ["Barcelona"], country: "Spain", pos: "FWD", image: "images/barca_yamal_raphinha.webp" },
       { name: "Robert Lewandowski", clubs: ["Barcelona", "Bayern Munich", "Dortmund"], country: "Poland", pos: "FWD" },
-      { name: "Frenkie de Jong", clubs: ["Barcelona", "Ajax"], country: "Netherlands", pos: "MID" },
-      { name: "Raphinha", clubs: ["Barcelona", "Leeds", "Rennes"], country: "Brazil", pos: "FWD" },
+      { name: "Frenkie de Jong", clubs: ["Ajax", "Barcelona"], country: "Netherlands", pos: "MID" },
+      { name: "Raphinha", clubs: ["Barcelona", "Leeds", "Rennes"], country: "Brazil", pos: "FWD", image: "images/barca_yamal_raphinha.webp" },
       { name: "Ronald Araújo", clubs: ["Barcelona"], country: "Uruguay", pos: "DEF" },
-
-      // Real Madrid Legends & Modern Stars
-      { name: "Cristiano Ronaldo", clubs: ["Real Madrid", "Man United", "Juventus", "Al Nassr"], country: "Portugal", pos: "FWD" },
-      { name: "Luka Modrić", clubs: ["Real Madrid", "Tottenham"], country: "Croatia", pos: "MID" },
-      { name: "Karim Benzema", clubs: ["Real Madrid", "Lyon", "Al Ittihad"], country: "France", pos: "FWD" },
-      { name: "Sergio Ramos", clubs: ["Real Madrid", "PSG", "Sevilla"], country: "Spain", pos: "DEF" },
-      { name: "Toni Kroos", clubs: ["Real Madrid", "Bayern Munich"], country: "Germany", pos: "MID" },
-      { name: "Gareth Bale", clubs: ["Real Madrid", "Tottenham", "LAFC"], country: "Wales", pos: "FWD" },
-      { name: "Marcelo", clubs: ["Real Madrid", "Fluminense"], country: "Brazil", pos: "DEF" },
-      { name: "Iker Casillas", clubs: ["Real Madrid", "Porto"], country: "Spain", pos: "GK" },
-      { name: "Keylor Navas", clubs: ["Real Madrid", "PSG", "Levante"], country: "Costa Rica", pos: "GK" },
-      { name: "Thibaut Courtois", clubs: ["Real Madrid", "Chelsea", "Atlético Madrid"], country: "Belgium", pos: "GK" },
-      { name: "Jude Bellingham", clubs: ["Real Madrid", "Dortmund", "Birmingham"], country: "England", pos: "MID" },
-      { name: "Vinícius Júnior", clubs: ["Real Madrid", "Flamengo"], country: "Brazil", pos: "FWD" },
-      { name: "Kylian Mbappé", clubs: ["Real Madrid", "PSG", "Monaco"], country: "France", pos: "FWD" },
-      { name: "Rodrygo", clubs: ["Real Madrid", "Santos"], country: "Brazil", pos: "FWD" },
-      { name: "Federico Valverde", clubs: ["Real Madrid", "Deportivo"], country: "Uruguay", pos: "MID" },
-      { name: "Dani Carvajal", clubs: ["Real Madrid", "Bayer Leverkusen"], country: "Spain", pos: "DEF" },
-      { name: "Casemiro", clubs: ["Real Madrid", "Man United", "Porto"], country: "Brazil", pos: "MID" },
-      { name: "Ángel Di María", clubs: ["Real Madrid", "PSG", "Juventus", "Man United", "Benfica"], country: "Argentina", pos: "FWD" },
-      { name: "Mesut Özil", clubs: ["Real Madrid", "Arsenal", "Werder Bremen"], country: "Germany", pos: "MID" },
-      { name: "Xabi Alonso", clubs: ["Real Madrid", "Bayern Munich", "Liverpool"], country: "Spain", pos: "MID" },
-      { name: "Sami Khedira", clubs: ["Real Madrid", "Juventus", "Stuttgart"], country: "Germany", pos: "MID" },
-      { name: "Raphaël Varane", clubs: ["Real Madrid", "Man United", "Lens"], country: "France", pos: "DEF" },
-
-      // Atlético Madrid Legends & Modern Stars
+      { name: "Ivan Rakitić", clubs: ["Barcelona", "Schalke 04", "Sevilla"], country: "Croatia", pos: "MID" },
+      { name: "Cesc Fàbregas", clubs: ["Arsenal", "Barcelona", "Chelsea", "Monaco"], country: "Spain", pos: "MID" },
+      { name: "Seydou Keita", clubs: ["Barcelona", "Roma", "Sevilla"], country: "Mali", pos: "MID" },
+      { name: "David Villa", clubs: ["Atlético Madrid", "Barcelona", "NYCFC", "Valencia"], country: "Spain", pos: "FWD" },
+      { name: "Pedro", clubs: ["Barcelona", "Chelsea", "Roma"], country: "Spain", pos: "FWD" },
+      { name: "Alexis Sánchez", clubs: ["Arsenal", "Barcelona", "Inter Milan", "Man United"], country: "Chile", pos: "FWD" },
+      { name: "Yaya Touré", clubs: ["Barcelona", "Man City", "Monaco"], country: "Ivory Coast", pos: "MID" },
+      { name: "Éric Abidal", clubs: ["Barcelona", "Lyon", "Monaco"], country: "France", pos: "DEF" },
+      { name: "Dani Olmo", clubs: ["Barcelona", "RB Leipzig"], country: "Spain", pos: "MID" },
+      { name: "Ferran Torres", clubs: ["Barcelona", "Man City", "Valencia"], country: "Spain", pos: "FWD" },
+      { name: "Pau Cubarsí", clubs: ["Barcelona"], country: "Spain", pos: "DEF" },
+      { name: "Alejandro Balde", clubs: ["Barcelona"], country: "Spain", pos: "DEF" },
+      { name: "Eric García", clubs: ["Barcelona", "Man City"], country: "Spain", pos: "DEF" },
+      { name: "Andreas Christensen", clubs: ["Barcelona", "Chelsea"], country: "Denmark", pos: "DEF" },
+      { name: "Jules Koundé", clubs: ["Barcelona", "Sevilla"], country: "France", pos: "DEF" },
+      { name: "Fermín López", clubs: ["Barcelona"], country: "Spain", pos: "MID" },
+      { name: "Ferran Jutglà", clubs: ["Barcelona"], country: "Spain", pos: "FWD" },
+      { name: "Ansu Fati", clubs: ["Barcelona", "Brighton"], country: "Spain", pos: "FWD" },
+      { name: "Ousmane Dembélé", clubs: ["Barcelona", "PSG"], country: "France", pos: "FWD" },
       { name: "Antoine Griezmann", clubs: ["Atlético Madrid", "Barcelona", "Real Sociedad"], country: "France", pos: "FWD" },
-      { name: "Radamel Falcao", clubs: ["Atlético Madrid", "Monaco", "Rayo Vallecano", "Chelsea", "Man United"], country: "Colombia", pos: "FWD" },
-      { name: "Diego Godín", clubs: ["Atlético Madrid", "Villarreal", "Inter Milan"], country: "Uruguay", pos: "DEF" },
+      { name: "Diego Godín", clubs: ["Atlético Madrid", "Inter Milan", "Villarreal"], country: "Uruguay", pos: "DEF" },
       { name: "Jan Oblak", clubs: ["Atlético Madrid", "Benfica"], country: "Slovenia", pos: "GK" },
       { name: "Koke", clubs: ["Atlético Madrid"], country: "Spain", pos: "MID" },
       { name: "Marcos Llorente", clubs: ["Atlético Madrid", "Real Madrid"], country: "Spain", pos: "MID" },
-      { name: "João Félix", clubs: ["Atlético Madrid", "Barcelona", "Chelsea", "Benfica"], country: "Portugal", pos: "FWD" },
+      { name: "João Félix", clubs: ["Atlético Madrid", "Barcelona", "Benfica", "Chelsea"], country: "Portugal", pos: "FWD" },
       { name: "Diego Costa", clubs: ["Atlético Madrid", "Chelsea", "Rayo Vallecano"], country: "Spain", pos: "FWD" },
       { name: "Arda Turan", clubs: ["Atlético Madrid", "Barcelona", "Galatasaray"], country: "Turkey", pos: "MID" },
       { name: "Rodrigo De Paul", clubs: ["Atlético Madrid", "Udinese", "Valencia"], country: "Argentina", pos: "MID" },
-
-      // Other Iconic La Liga Stars (Sevilla, Valencia, Athletic, Villarreal, Real Sociedad, Betis)
-      { name: "David Villa", clubs: ["Valencia", "Barcelona", "Atlético Madrid", "NYCFC"], country: "Spain", pos: "FWD" },
-      { name: "Jesús Navas", clubs: ["Sevilla", "Man City"], country: "Spain", pos: "DEF" },
-      { name: "Ivan Rakitić", clubs: ["Sevilla", "Barcelona", "Schalke 04"], country: "Croatia", pos: "MID" },
-      { name: "David Silva", clubs: ["Valencia", "Real Sociedad", "Man City"], country: "Spain", pos: "MID" },
-      { name: "Iker Muniain", clubs: ["Athletic Club"], country: "Spain", pos: "MID" },
-      { name: "Inaki Williams", clubs: ["Athletic Club"], country: "Ghana", pos: "FWD" },
-      { name: "Nico Williams", clubs: ["Athletic Club"], country: "Spain", pos: "FWD" },
-      { name: "Gerard Moreno", clubs: ["Villarreal", "Espanyol"], country: "Spain", pos: "FWD" },
-      { name: "Dani Parejo", clubs: ["Valencia", "Villarreal", "Getafe"], country: "Spain", pos: "MID" },
-      { name: "Isco", clubs: ["Real Betis", "Real Madrid", "Sevilla", "Málaga"], country: "Spain", pos: "MID" },
-      { name: "Nabil Fekir", clubs: ["Real Betis", "Lyon"], country: "France", pos: "MID" },
+      { name: "Álvaro Morata", clubs: ["Atlético Madrid", "Chelsea", "Juventus", "Real Madrid"], country: "Spain", pos: "FWD" },
+      { name: "Fernando Torres", clubs: ["Atlético Madrid", "Chelsea", "Liverpool"], country: "Spain", pos: "FWD" },
+      { name: "David de Gea", clubs: ["Atlético Madrid", "Man United"], country: "Spain", pos: "GK" },
+      { name: "Thibaut Courtois", clubs: ["Atlético Madrid", "Chelsea", "Real Madrid"], country: "Belgium", pos: "GK" },
+      { name: "Saúl Ñíguez", clubs: ["Atlético Madrid", "Chelsea"], country: "Spain", pos: "MID" },
+      { name: "José María Giménez", clubs: ["Atlético Madrid"], country: "Uruguay", pos: "DEF" },
+      { name: "Mario Mandžukić", clubs: ["Atlético Madrid", "Bayern Munich", "Juventus"], country: "Croatia", pos: "FWD" },
+      { name: "Filipe Luís", clubs: ["Atlético Madrid", "Chelsea"], country: "Brazil", pos: "DEF" },
+      { name: "Juanfran", clubs: ["Atlético Madrid", "Real Madrid"], country: "Spain", pos: "DEF" },
+      { name: "Miranda", clubs: ["Atlético Madrid", "Inter Milan"], country: "Brazil", pos: "DEF" },
+      { name: "Tiago Mendes", clubs: ["Atlético Madrid", "Chelsea", "Juventus"], country: "Portugal", pos: "MID" },
+      { name: "Gabi", clubs: ["Atlético Madrid", "Real Zaragoza"], country: "Spain", pos: "MID" },
+      { name: "Raúl García", clubs: ["Athletic Club", "Atlético Madrid", "Osasuna"], country: "Spain", pos: "MID" },
+      { name: "Sergio Ramos", clubs: ["PSG", "Real Madrid", "Sevilla"], country: "Spain", pos: "DEF" },
+      { name: "Cristiano Ronaldo", clubs: ["Al Nassr", "Juventus", "Man United", "Real Madrid"], country: "Portugal", pos: "FWD" },
+      { name: "Luka Modrić", clubs: ["Real Madrid", "Tottenham"], country: "Croatia", pos: "MID" },
+      { name: "Karim Benzema", clubs: ["Al Ittihad", "Lyon", "Real Madrid"], country: "France", pos: "FWD" },
+      { name: "Toni Kroos", clubs: ["Bayern Munich", "Real Madrid"], country: "Germany", pos: "MID" },
+      { name: "Gareth Bale", clubs: ["LAFC", "Real Madrid", "Tottenham"], country: "Wales", pos: "FWD" },
+      { name: "Marcelo", clubs: ["Fluminense", "Real Madrid"], country: "Brazil", pos: "DEF" },
+      { name: "Iker Casillas", clubs: ["Porto", "Real Madrid"], country: "Spain", pos: "GK" },
+      { name: "Keylor Navas", clubs: ["Levante", "PSG", "Real Madrid"], country: "Costa Rica", pos: "GK" },
+      { name: "Jude Bellingham", clubs: ["Birmingham", "Dortmund", "Real Madrid"], country: "England", pos: "MID" },
+      { name: "Vinícius Júnior", clubs: ["Flamengo", "Real Madrid"], country: "Brazil", pos: "FWD" },
+      { name: "Kylian Mbappé", clubs: ["Monaco", "PSG", "Real Madrid"], country: "France", pos: "FWD" },
+      { name: "Rodrygo", clubs: ["Real Madrid", "Santos"], country: "Brazil", pos: "FWD" },
+      { name: "Federico Valverde", clubs: ["Deportivo", "Real Madrid"], country: "Uruguay", pos: "MID" },
+      { name: "Dani Carvajal", clubs: ["Bayer Leverkusen", "Real Madrid"], country: "Spain", pos: "DEF" },
+      { name: "Casemiro", clubs: ["Man United", "Porto", "Real Madrid"], country: "Brazil", pos: "MID" },
+      { name: "Ángel Di María", clubs: ["Benfica", "Juventus", "Man United", "PSG", "Real Madrid"], country: "Argentina", pos: "FWD" },
+      { name: "Mesut Özil", clubs: ["Arsenal", "Real Madrid", "Werder Bremen"], country: "Germany", pos: "MID" },
+      { name: "Xabi Alonso", clubs: ["Bayern Munich", "Liverpool", "Real Madrid"], country: "Spain", pos: "MID" },
+      { name: "Sami Khedira", clubs: ["Juventus", "Real Madrid", "Stuttgart"], country: "Germany", pos: "MID" },
+      { name: "Raphaël Varane", clubs: ["Lens", "Man United", "Real Madrid"], country: "France", pos: "DEF" },
+      { name: "Raúl", clubs: ["Real Madrid", "Schalke 04"], country: "Spain", pos: "FWD" },
+      { name: "Isco", clubs: ["Málaga", "Real Betis", "Real Madrid", "Sevilla"], country: "Spain", pos: "MID" },
+      { name: "Ángel Correa", clubs: ["Atlético Madrid", "San Lorenzo"], country: "Argentina", pos: "FWD" },
+      { name: "Antonio Rüdiger", clubs: ["Chelsea", "Real Madrid", "Roma"], country: "Germany", pos: "DEF" },
+      { name: "Éder Militão", clubs: ["Porto", "Real Madrid"], country: "Brazil", pos: "DEF" },
+      { name: "David Alaba", clubs: ["Bayern Munich", "Real Madrid"], country: "Austria", pos: "DEF" },
+      { name: "Aurélien Tchouaméni", clubs: ["Monaco", "Real Madrid"], country: "France", pos: "MID" },
+      { name: "Eduardo Camavinga", clubs: ["Real Madrid", "Rennes"], country: "France", pos: "MID" },
+      { name: "Arda Güler", clubs: ["Fenerbahçe", "Real Madrid"], country: "Turkey", pos: "MID" },
+      { name: "Brahim Díaz", clubs: ["Man City", "Milan", "Real Madrid"], country: "Spain", pos: "MID" },
+      { name: "Lucas Vázquez", clubs: ["Real Madrid"], country: "Spain", pos: "DEF" },
+      { name: "Nacho Fernández", clubs: ["Real Madrid"], country: "Spain", pos: "DEF" },
+      { name: "Marco Asensio", clubs: ["Mallorca", "PSG", "Real Madrid"], country: "Spain", pos: "FWD" },
+      { name: "James Rodríguez", clubs: ["Bayern Munich", "Monaco", "Real Madrid"], country: "Colombia", pos: "MID" },
+      { name: "Gonzalo Higuaín", clubs: ["Juventus", "Napoli", "Real Madrid"], country: "Argentina", pos: "FWD" },
+      { name: "Pepe", clubs: ["Porto", "Real Madrid"], country: "Portugal", pos: "DEF" },
+      { name: "Fabio Coentrão", clubs: ["Benfica", "Real Madrid", "Sporting"], country: "Portugal", pos: "DEF" },
+      { name: "Álvaro Arbeloa", clubs: ["Liverpool", "Real Madrid"], country: "Spain", pos: "DEF" },
+      { name: "José Callejón", clubs: ["Napoli", "Real Madrid"], country: "Spain", pos: "FWD" },
+      { name: "Sevilla Jesus Navas", clubs: ["Man City", "Sevilla"], country: "Spain", pos: "DEF" },
+      { name: "Jesús Navas", clubs: ["Man City", "Sevilla"], country: "Spain", pos: "DEF" },
+      { name: "Júlio Baptista", clubs: ["Arsenal", "Real Madrid", "Sevilla"], country: "Brazil", pos: "MID" },
+      { name: "Frederic Kanouté", clubs: ["Sevilla", "Tottenham"], country: "Mali", pos: "FWD" },
+      { name: "Carlos Bacca", clubs: ["Milan", "Sevilla", "Villarreal"], country: "Colombia", pos: "FWD" },
+      { name: "Éver Banega", clubs: ["Inter Milan", "Sevilla", "Valencia"], country: "Argentina", pos: "MID" },
+      { name: "José Antonio Reyes", clubs: ["Arsenal", "Atlético Madrid", "Real Madrid", "Sevilla"], country: "Spain", pos: "FWD" },
+      { name: "Alberto Moreno", clubs: ["Liverpool", "Sevilla", "Villarreal"], country: "Spain", pos: "DEF" },
+      { name: "Aleix Vidal", clubs: ["Alavés", "Barcelona", "Sevilla"], country: "Spain", pos: "DEF" },
+      { name: "Kevin Gameiro", clubs: ["Atlético Madrid", "Sevilla", "Valencia"], country: "France", pos: "FWD" },
+      { name: "Suso", clubs: ["Liverpool", "Milan", "Sevilla"], country: "Spain", pos: "FWD" },
+      { name: "Lucas Ocampos", clubs: ["Ajax", "Sevilla"], country: "Argentina", pos: "FWD" },
+      { name: "Youssef En-Nesyri", clubs: ["Fenerbahçe", "Leganés", "Sevilla"], country: "Morocco", pos: "FWD" },
+      { name: "Jesús Corona", clubs: ["Porto", "Sevilla"], country: "Mexico", pos: "FWD" },
+      { name: "Adil Rami", clubs: ["Milan", "Sevilla", "Valencia"], country: "France", pos: "DEF" },
+      { name: "Gary Medel", clubs: ["Boca Juniors", "Inter Milan", "Sevilla"], country: "Chile", pos: "MID" },
+      { name: "Steven Nzonzi", clubs: ["Roma", "Sevilla"], country: "France", pos: "MID" },
+      { name: "Dani Parejo", clubs: ["Getafe", "Real Madrid", "Valencia", "Villarreal"], country: "Spain", pos: "MID" },
+      { name: "David Silva", clubs: ["Man City", "Real Sociedad", "Valencia"], country: "Spain", pos: "MID" },
+      { name: "Joaquín", clubs: ["Fiorentina", "Málaga", "Real Betis", "Valencia"], country: "Spain", pos: "FWD" },
+      { name: "Juan Mata", clubs: ["Chelsea", "Man United", "Valencia"], country: "Spain", pos: "MID" },
+      { name: "David Albelda", clubs: ["Valencia"], country: "Spain", pos: "MID" },
+      { name: "Santi Cazorla", clubs: ["Arsenal", "Málaga", "Villarreal"], country: "Spain", pos: "MID" },
+      { name: "Sofiane Feghouli", clubs: ["Galatasaray", "Valencia"], country: "Algeria", pos: "MID" },
+      { name: "Jérémy Mathieu", clubs: ["Barcelona", "Valencia"], country: "France", pos: "DEF" },
+      { name: "Gonçalo Guedes", clubs: ["PSG", "Valencia"], country: "Portugal", pos: "FWD" },
+      { name: "Nicolás Otamendi", clubs: ["Benfica", "Man City", "Valencia"], country: "Argentina", pos: "DEF" },
+      { name: "João Cancelo", clubs: ["Barcelona", "Bayern Munich", "Man City", "Valencia"], country: "Portugal", pos: "DEF" },
+      { name: "Ferrán Torres", clubs: ["Barcelona", "Man City", "Valencia"], country: "Spain", pos: "FWD" },
+      { name: "Rodrigo Moreno", clubs: ["Leeds", "Real Madrid", "Valencia"], country: "Spain", pos: "FWD" },
+      { name: "Carlos Soler", clubs: ["PSG", "Valencia"], country: "Spain", pos: "MID" },
+      { name: "Ezequiel Garay", clubs: ["Benfica", "Real Madrid", "Valencia"], country: "Argentina", pos: "DEF" },
+      { name: "Alessandro Florenzi", clubs: ["Milan", "Roma", "Valencia"], country: "Italy", pos: "DEF" },
+      { name: "Gerard Moreno", clubs: ["Espanyol", "Villarreal"], country: "Spain", pos: "FWD" },
+      { name: "Diego Forlán", clubs: ["Atlético Madrid", "Man United", "Villarreal"], country: "Uruguay", pos: "FWD" },
+      { name: "Juan Román Riquelme", clubs: ["Barcelona", "Villarreal"], country: "Argentina", pos: "MID" },
+      { name: "Marcos Senna", clubs: ["Villarreal"], country: "Spain", pos: "MID" },
+      { name: "Robert Pirès", clubs: ["Arsenal", "Villarreal"], country: "France", pos: "MID" },
+      { name: "Giuseppe Rossi", clubs: ["Fiorentina", "Villarreal"], country: "Italy", pos: "FWD" },
+      { name: "Cédric Bakambu", clubs: ["Beijing Guoan", "Villarreal"], country: "DR Congo", pos: "FWD" },
+      { name: "Pau Torres", clubs: ["Aston Villa", "Villarreal"], country: "Spain", pos: "DEF" },
+      { name: "Yeremy Pino", clubs: ["Villarreal"], country: "Spain", pos: "FWD" },
+      { name: "Raúl Albiol", clubs: ["Napoli", "Real Madrid", "Villarreal"], country: "Spain", pos: "DEF" },
+      { name: "Robert Fernández", clubs: ["Villarreal"], country: "Spain", pos: "MID" },
+      { name: "Martin Ødegaard", clubs: ["Arsenal", "Real Madrid", "Real Sociedad"], country: "Norway", pos: "MID" },
       { name: "Mikel Oyarzabal", clubs: ["Real Sociedad"], country: "Spain", pos: "FWD" },
-      { name: "Martin Ødegaard", clubs: ["Real Sociedad", "Real Madrid", "Arsenal"], country: "Norway", pos: "MID" },
-
-      // Global Superstars & International Icons (2010 - 2026)
-      { name: "Erling Haaland", clubs: ["Man City", "Dortmund", "Salzburg"], country: "Norway", pos: "FWD" },
-      { name: "Kevin De Bruyne", clubs: ["Man City", "Wolfsburg", "Chelsea"], country: "Belgium", pos: "MID" },
-      { name: "Mohamed Salah", clubs: ["Liverpool", "Roma", "Chelsea"], country: "Egypt", pos: "FWD" },
-      { name: "Harry Kane", clubs: ["Bayern Munich", "Tottenham"], country: "England", pos: "FWD" },
-      { name: "Virgil van Dijk", clubs: ["Liverpool", "Southampton", "Celtic"], country: "Netherlands", pos: "DEF" },
+      { name: "Xabi Prieto", clubs: ["Real Sociedad"], country: "Spain", pos: "MID" },
+      { name: "Asier Illarramendi", clubs: ["Real Madrid", "Real Sociedad"], country: "Spain", pos: "MID" },
+      { name: "Carlos Vela", clubs: ["Arsenal", "Real Sociedad"], country: "Mexico", pos: "FWD" },
+      { name: "Willian José", clubs: ["Real Betis", "Real Sociedad"], country: "Brazil", pos: "FWD" },
+      { name: "Alexander Isak", clubs: ["Newcastle", "Real Sociedad"], country: "Sweden", pos: "FWD" },
+      { name: "Takefusa Kubo", clubs: ["Real Madrid", "Real Sociedad"], country: "Japan", pos: "FWD" },
+      { name: "Robin Le Normand", clubs: ["Atlético Madrid", "Real Sociedad"], country: "France", pos: "DEF" },
+      { name: "Yannick Carrasco", clubs: ["Atlético Madrid", "Barcelona", "Dalian"], country: "Belgium", pos: "FWD" },
+      { name: "Adnan Januzaj", clubs: ["Man United", "Real Sociedad"], country: "Belgium", pos: "FWD" },
+      { name: "Theo Hernández", clubs: ["Atlético Madrid", "Milan", "Real Madrid"], country: "France", pos: "DEF" },
+      { name: "Iñigo Martínez", clubs: ["Athletic Club", "Barcelona"], country: "Spain", pos: "DEF" },
+      { name: "Iker Muniain", clubs: ["Athletic Club"], country: "Spain", pos: "MID" },
+      { name: "Iñaki Williams", clubs: ["Athletic Club"], country: "Ghana", pos: "FWD" },
+      { name: "Nico Williams", clubs: ["Athletic Club"], country: "Spain", pos: "FWD" },
+      { name: "Aymeric Laporte", clubs: ["Al Nassr", "Athletic Club", "Man City", "Real Madrid"], country: "Spain", pos: "DEF" },
+      { name: "Unai Simón", clubs: ["Athletic Club"], country: "Spain", pos: "GK" },
+      { name: "Aritz Aduriz", clubs: ["Athletic Club", "Mallorca", "Valencia"], country: "Spain", pos: "FWD" },
+      { name: "Ander Herrera", clubs: ["Athletic Club", "Man United", "PSG"], country: "Spain", pos: "MID" },
+      { name: "Javi Martínez", clubs: ["Athletic Club", "Bayern Munich"], country: "Spain", pos: "DEF" },
+      { name: "Fernando Llorente", clubs: ["Athletic Club", "Juventus", "Tottenham"], country: "Spain", pos: "FWD" },
+      { name: "Ander Iturraspe", clubs: ["Athletic Club"], country: "Spain", pos: "MID" },
+      { name: "Kepa Arrizabalaga", clubs: ["Athletic Club", "Chelsea", "Real Madrid"], country: "Spain", pos: "GK" },
+      { name: "Ander Capa", clubs: ["Athletic Club"], country: "Spain", pos: "DEF" },
+      { name: "Mikel San José", clubs: ["Athletic Club"], country: "Spain", pos: "MID" },
+      { name: "Nabil Fekir", clubs: ["Lyon", "Real Betis"], country: "France", pos: "MID" },
+      { name: "Rubén Castro", clubs: ["Deportivo", "Las Palmas", "Real Betis"], country: "Spain", pos: "FWD" },
+      { name: "Borja Iglesias", clubs: ["Celta", "Espanyol", "Real Betis"], country: "Spain", pos: "FWD" },
+      { name: "Sergio Canales", clubs: ["Real Betis", "Real Madrid", "Real Sociedad"], country: "Spain", pos: "MID" },
+      { name: "Guido Rodríguez", clubs: ["Atlético Madrid", "Real Betis"], country: "Argentina", pos: "MID" },
+      { name: "William Carvalho", clubs: ["Real Betis", "Sporting"], country: "Portugal", pos: "MID" },
+      { name: "Rui Silva", clubs: ["Granada", "Real Betis"], country: "Portugal", pos: "GK" },
+      { name: "Ayoze Pérez", clubs: ["Leicester", "Newcastle", "Real Betis"], country: "Spain", pos: "FWD" },
+      { name: "Luiz Henrique", clubs: ["Botafogo", "Real Betis"], country: "Brazil", pos: "FWD" },
+      { name: "Marc Bartra", clubs: ["Barcelona", "Dortmund", "Real Betis"], country: "Spain", pos: "DEF" },
+      { name: "Juan Miranda", clubs: ["Barcelona", "Real Betis"], country: "Spain", pos: "DEF" },
+      { name: "Héctor Bellerín", clubs: ["Arsenal", "Barcelona", "Real Betis"], country: "Spain", pos: "DEF" },
+      { name: "Giovani Lo Celso", clubs: ["PSG", "Real Betis", "Tottenham", "Villarreal"], country: "Argentina", pos: "MID" },
+      { name: "Juan Cruz", clubs: ["Real Betis"], country: "Spain", pos: "FWD" },
+      { name: "Abner Vinícius", clubs: ["Real Betis", "Real Madrid"], country: "Brazil", pos: "DEF" },
+      { name: "Antony", clubs: ["Ajax", "Man United", "Real Betis"], country: "Brazil", pos: "FWD", image: "images/antonycold.jfif" },
+      { name: "Assane Diao", clubs: ["Real Betis"], country: "Spain", pos: "FWD" },
+      { name: "Denílson", clubs: ["Real Betis", "São Paulo"], country: "Brazil", pos: "FWD" },
+      { name: "Nélson Semedo", clubs: ["Barcelona", "Benfica", "Wolves"], country: "Portugal", pos: "DEF" },
+      { name: "Bernardo Silva", clubs: ["Benfica", "Man City", "Monaco"], country: "Portugal", pos: "MID" },
+      { name: "Rúben Dias", clubs: ["Benfica", "Man City"], country: "Portugal", pos: "DEF" },
+      { name: "Ederson", clubs: ["Benfica", "Man City"], country: "Brazil", pos: "GK" },
+      { name: "Kevin De Bruyne", clubs: ["Chelsea", "Man City", "Wolfsburg"], country: "Belgium", pos: "MID" },
+      { name: "Erling Haaland", clubs: ["Dortmund", "Man City", "Salzburg"], country: "Norway", pos: "FWD" },
+      { name: "Rodri", clubs: ["Atlético Madrid", "Man City", "Villarreal"], country: "Spain", pos: "MID" },
+      { name: "Sergio Agüero", clubs: ["Atlético Madrid", "Barcelona", "Man City"], country: "Argentina", pos: "FWD" },
+      { name: "Vincent Kompany", clubs: ["Hamburg", "Man City"], country: "Belgium", pos: "DEF" },
+      { name: "Ilkay Gündogan", clubs: ["Barcelona", "Dortmund", "Man City"], country: "Germany", pos: "MID" },
+      { name: "Riyad Mahrez", clubs: ["Leicester", "Man City"], country: "Algeria", pos: "FWD" },
+      { name: "Raheem Sterling", clubs: ["Chelsea", "Liverpool", "Man City"], country: "England", pos: "FWD" },
+      { name: "John Stones", clubs: ["Everton", "Man City"], country: "England", pos: "DEF" },
+      { name: "Thiago Alcântara", clubs: ["Barcelona", "Bayern Munich", "Liverpool"], country: "Spain", pos: "MID" },
+      { name: "Thomas Müller", clubs: ["Bayern Munich"], country: "Germany", pos: "FWD" },
       { name: "Manuel Neuer", clubs: ["Bayern Munich", "Schalke 04"], country: "Germany", pos: "GK" },
-      { name: "N'Golo Kanté", clubs: ["Chelsea", "Leicester", "Al Ittihad"], country: "France", pos: "MID" },
-      { name: "Rodri", clubs: ["Man City", "Atlético Madrid", "Villarreal"], country: "Spain", pos: "MID" },
-      { name: "Alexis Sánchez", clubs: ["Barcelona", "Arsenal", "Inter Milan", "Man United"], country: "Chile", pos: "FWD" },
-      { name: "Cesc Fàbregas", clubs: ["Barcelona", "Arsenal", "Chelsea", "Monaco"], country: "Spain", pos: "MID" }
+      { name: "Philipp Lahm", clubs: ["Bayern Munich", "Stuttgart"], country: "Germany", pos: "DEF" },
+      { name: "Bastian Schweinsteiger", clubs: ["Bayern Munich", "Man United"], country: "Germany", pos: "MID" },
+      { name: "Arjen Robben", clubs: ["Bayern Munich", "Chelsea", "Real Madrid"], country: "Netherlands", pos: "FWD" },
+      { name: "Franck Ribéry", clubs: ["Bayern Munich", "Fiorentina"], country: "France", pos: "FWD" },
+      { name: "Joshua Kimmich", clubs: ["Bayern Munich", "RB Leipzig"], country: "Germany", pos: "MID" },
+      { name: "Alphonso Davies", clubs: ["Bayern Munich"], country: "Canada", pos: "DEF" },
+      { name: "Jerome Boateng", clubs: ["Bayern Munich", "Man City"], country: "Germany", pos: "DEF" },
+      { name: "Eden Hazard", clubs: ["Chelsea", "Real Madrid"], country: "Belgium", pos: "FWD" },
+      { name: "Didier Drogba", clubs: ["Chelsea", "Galatasaray"], country: "Ivory Coast", pos: "FWD" },
+      { name: "Frank Lampard", clubs: ["Chelsea", "Man City"], country: "England", pos: "MID" },
+      { name: "John Terry", clubs: ["Chelsea"], country: "England", pos: "DEF" },
+      { name: "César Azpilicueta", clubs: ["Atlético Madrid", "Chelsea"], country: "Spain", pos: "DEF" },
+      { name: "N'Golo Kanté", clubs: ["Chelsea", "Leicester"], country: "France", pos: "MID" },
+      { name: "Jorginho", clubs: ["Arsenal", "Chelsea"], country: "Italy", pos: "MID" },
+      { name: "Willian", clubs: ["Arsenal", "Chelsea"], country: "Brazil", pos: "FWD" },
+      { name: "Oscar", clubs: ["Chelsea"], country: "Brazil", pos: "MID" },
+      { name: "Petr Čech", clubs: ["Arsenal", "Chelsea"], country: "Czech Republic", pos: "GK" },
+      { name: "Mohamed Salah", clubs: ["Chelsea", "Liverpool", "Roma"], country: "Egypt", pos: "FWD" },
+      { name: "Steven Gerrard", clubs: ["Liverpool"], country: "England", pos: "MID" },
+      { name: "Virgil van Dijk", clubs: ["Celtic", "Liverpool", "Southampton"], country: "Netherlands", pos: "DEF" },
+      { name: "Sadio Mané", clubs: ["Liverpool", "Southampton"], country: "Senegal", pos: "FWD" },
+      { name: "Alisson", clubs: ["Liverpool", "Roma"], country: "Brazil", pos: "GK" },
+      { name: "Xherdan Shaqiri", clubs: ["Bayern Munich", "Liverpool"], country: "Switzerland", pos: "MID" },
+      { name: "Fabinho", clubs: ["Liverpool", "Monaco", "Real Madrid"], country: "Brazil", pos: "MID" },
+      { name: "Andrew Robertson", clubs: ["Liverpool"], country: "Scotland", pos: "DEF" },
+      { name: "Trent Alexander-Arnold", clubs: ["Liverpool", "Real Madrid"], country: "England", pos: "DEF" },
+      { name: "Alex Oxlade-Chamberlain", clubs: ["Arsenal", "Liverpool"], country: "England", pos: "MID" },
+      { name: "Wayne Rooney", clubs: ["Everton", "Man United"], country: "England", pos: "FWD" },
+      { name: "Paul Pogba", clubs: ["Juventus", "Man United"], country: "France", pos: "MID" },
+      { name: "Bruno Fernandes", clubs: ["Man United", "Sporting"], country: "Portugal", pos: "MID" },
+      { name: "Rio Ferdinand", clubs: ["Leeds", "Man United"], country: "England", pos: "DEF" },
+      { name: "Nemanja Vidić", clubs: ["Man United"], country: "Serbia", pos: "DEF" },
+      { name: "Ryan Giggs", clubs: ["Man United"], country: "Wales", pos: "MID" },
+      { name: "Paul Scholes", clubs: ["Man United"], country: "England", pos: "MID" },
     ];
 
     const CRITERIA_POOL = [
@@ -359,12 +539,52 @@
       isGameOver: false
     };
 
+    function criterionKey(crit) {
+      return `${crit.type}:${crit.value}`;
+    }
+
+    function cellMatches(rowCrit, colCrit) {
+      return PLAYERS.filter(player => meetsCriterion(player, rowCrit) && meetsCriterion(player, colCrit));
+    }
+
+    // Generate only boards where every one of the 9 squares has real answers.
+    // We also require at least 2 possible players per square so a board does not
+    // accidentally become a one-player trivia trap.
+    function findValidBoard() {
+      for (let attempt = 0; attempt < 10000; attempt++) {
+        const shuffled = [...CRITERIA_POOL].sort(() => Math.random() - 0.5);
+        const cols = shuffled.slice(0, 3);
+        const rows = shuffled.slice(3, 6);
+
+        const counts = rows.map(rowCrit => cols.map(colCrit => cellMatches(rowCrit, colCrit).length));
+        const minCount = Math.min(...counts.flat());
+
+        if (minCount >= 2) {
+          return { rows, cols, counts };
+        }
+      }
+
+      // Extremely unlikely fallback: choose a board with at least one answer
+      // per square rather than displaying an impossible board.
+      for (let attempt = 0; attempt < 10000; attempt++) {
+        const shuffled = [...CRITERIA_POOL].sort(() => Math.random() - 0.5);
+        const cols = shuffled.slice(0, 3);
+        const rows = shuffled.slice(3, 6);
+        const counts = rows.map(rowCrit => cols.map(colCrit => cellMatches(rowCrit, colCrit).length));
+        if (Math.min(...counts.flat()) >= 1) return { rows, cols, counts };
+      }
+
+      return null;
+    }
+
     function initGame() {
-      // Pick random unique row/col criteria
-      let shuffled = [...CRITERIA_POOL].sort(() => 0.5 - Math.random());
-      
-      let cols = shuffled.slice(0, 3);
-      let rows = shuffled.slice(3, 6);
+      const generated = findValidBoard();
+      if (!generated) {
+        console.error('Could not generate a valid board.');
+        return;
+      }
+
+      const { rows, cols } = generated;
 
       gameState = {
         board: Array(3).fill(null).map(() => Array(3).fill(null)),
@@ -375,7 +595,6 @@
         isGameOver: false
       };
 
-      // Render Headers
       cols.forEach((crit, i) => {
         document.getElementById(`col-${i}`).innerHTML = `
           <span class="text-base md:text-xl mb-1">${crit.icon}</span>
@@ -390,7 +609,6 @@
         `;
       });
 
-      // Clear cell graphics
       document.querySelectorAll('.cell-interactive').forEach(cell => {
         cell.className = 'grid-cell cell-interactive rounded-xl flex flex-col items-center justify-center relative cursor-pointer group p-1';
         cell.innerHTML = `
@@ -450,6 +668,32 @@
 
     function closeAlert() {
       document.getElementById('alert-modal').classList.add('hidden');
+    }
+
+    function showSuccess(player, rowCrit, colCrit) {
+      const modal = document.getElementById('success-modal');
+      const img = document.getElementById('success-image');
+      const fallback = document.getElementById('success-fallback');
+
+      document.getElementById('success-title').innerText = player.name;
+      document.getElementById('success-details').innerText = `${player.country} • ${player.pos}  |  ${rowCrit.label} + ${colCrit.label}`;
+
+      if (player.image) {
+        img.src = player.image;
+        img.alt = player.name;
+        img.classList.remove('hidden');
+        fallback.classList.add('hidden');
+        img.onerror = () => { img.classList.add('hidden'); fallback.classList.remove('hidden'); };
+      } else {
+        img.classList.add('hidden');
+        fallback.classList.remove('hidden');
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeSuccess() {
+      document.getElementById('success-modal').classList.add('hidden');
     }
 
     function filterPlayers() {
@@ -519,9 +763,12 @@
           <span class="absolute top-1 right-1.5 w-4 h-4 rounded text-[10px] font-black flex items-center justify-center ${badgeColor}">
             ${gameState.currentPlayer}
           </span>
-          <span class="text-xs md:text-sm font-black text-slate-100 leading-tight mt-1 line-clamp-2 px-1">${player.name}</span>
+          ${player.image ? `<img src="${player.image}" alt="${player.name}" class="cell-player-image">` : `<div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-lg mb-1">⚽</div>`}
+          <span class="text-xs md:text-sm font-black text-slate-100 leading-tight line-clamp-2 px-1">${player.name}</span>
           <span class="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">${player.country}</span>
         `;
+
+        showSuccess(player, rowCrit, colCrit);
 
         if (checkWin(gameState.currentPlayer)) {
           const winner = gameState.currentPlayer;
@@ -548,7 +795,7 @@
 
         showAlert(
           "Invalid Selection!",
-          `❌ ${player.name} ${failedReason.join(' and ')} during the 2010–2026 era. Turn passed to Player ${gameState.currentPlayer === 'X' ? 'O' : 'X'}!`
+          `❌ ${player.name} ${failedReason.join(' and ')}. Turn passed to Player ${gameState.currentPlayer === 'X' ? 'O' : 'X'}!`
         );
 
         // Turn switches on wrong answer
